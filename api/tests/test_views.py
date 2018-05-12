@@ -9,6 +9,7 @@ from django.core.urlresolvers import reverse
 from django.db.utils import IntegrityError
 from urllib.parse import urlencode
 
+from oauth2_provider.models import Application
 from mission_control.models import Rover, BlockDiagram
 
 
@@ -94,10 +95,43 @@ class TestRoverViewSet(BaseAuthenticatedTestCase):
         self.assertEqual(response.json()[0]['owner'], self.admin.id)
         self.assertEqual(response.json()[0]['local_ip'], '8.8.8.8')
 
+    def test_rover_client_id_filter(self):
+        """Test the rover view filters correctly on oauth application client id."""
+        self.client.login(username='administrator', password='password')
+        Rover.objects.create(
+            name='rover',
+            owner=self.admin,
+            local_ip='8.8.8.8',
+            oauth_application = Application.objects.create(
+                user=self.admin,
+                authorization_grant_type=Application.GRANT_CLIENT_CREDENTIALS,
+                client_type=Application.CLIENT_CONFIDENTIAL,
+                name='rover'
+            )
+        )
+        rover2 = Rover.objects.create(
+            name='rover2',
+            owner=self.admin,
+            local_ip='8.8.8.8',
+            oauth_application = Application.objects.create(
+                user=self.admin,
+                authorization_grant_type=Application.GRANT_CLIENT_CREDENTIALS,
+                client_type=Application.CLIENT_CONFIDENTIAL,
+                name='rover2'
+            )
+        )
+        response = self.get(
+            reverse('api:v1:rover-list') + '?client_id=' + rover2.oauth_application.client_id)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, len(response.json()))
+        self.assertEqual(response.json()[0]['name'], 'rover2')
+        self.assertEqual(response.json()[0]['owner'], self.admin.id)
+        self.assertEqual(response.json()[0]['local_ip'], '8.8.8.8')
+
     def test_rover_not_logged_in(self):
         """Test the rover view denies unauthenticated user."""
         response = self.get(reverse('api:v1:rover-list'))
-        self.assertEqual(403, response.status_code)
+        self.assertEqual(401, response.status_code)
 
 
 class TestBlockDiagramViewSet(BaseAuthenticatedTestCase):
@@ -156,7 +190,7 @@ class TestBlockDiagramViewSet(BaseAuthenticatedTestCase):
     def test_bd_not_logged_in(self):
         """Test the block diagram view denies unauthenticated user."""
         response = self.get(reverse('api:v1:blockdiagram-list'))
-        self.assertEqual(403, response.status_code)
+        self.assertEqual(401, response.status_code)
 
     def test_bd_create(self):
         """Test creating block diagram sets user."""

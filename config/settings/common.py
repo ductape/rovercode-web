@@ -42,6 +42,7 @@ THIRD_PARTY_APPS = (
     'allauth.socialaccount',  # registration
     'rest_framework',
     'oauth2_provider',
+    'rest_framework_swagger',
 )
 
 # Apps specific for this project go here.
@@ -110,6 +111,9 @@ DATABASES = {
     'default': env.db('DATABASE_URL', default='postgres:///rovercode_web'),
 }
 DATABASES['default']['ATOMIC_REQUESTS'] = True
+
+if env.bool('POSTGRES_USE_AWS_SSL', False):
+    DATABASES['default']['OPTIONS'] = {'sslrootcert': 'rds-ca-2015-root.crt', 'sslmode': 'require'}
 
 
 # GENERAL CONFIGURATION
@@ -253,6 +257,7 @@ SOCIALACCOUNT_ADAPTER = 'rovercode_web.users.adapters.SocialAccountAdapter'
 AUTH_USER_MODEL = 'users.User'
 LOGIN_REDIRECT_URL = 'users:redirect'
 LOGIN_URL = 'account_login'
+LOGOUT_URL = 'account_logout'
 
 # SLUGLIFIER
 AUTOSLUG_SLUGIFY_FUNCTION = 'slugify.slugify'
@@ -272,13 +277,17 @@ OAUTH2_PROVIDER = {
         'write': 'Write scope',
     }
 }
+OAUTH2_PROVIDER_APPLICATION_MODEL = 'oauth2_provider.Application'
 
 # REST FRAMEWORK CONFIGURATION
 # ------------------------------------------------------------------------------
 REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
-        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ),
 }

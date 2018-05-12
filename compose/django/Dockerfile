@@ -2,10 +2,16 @@ FROM python:3.5
 
 ENV PYTHONUNBUFFERED 1
 
-# Requirements have to be pulled and installed here, otherwise caching won't work
-COPY ./requirements /requirements
+RUN apt-get install -y ca-certificates wget \
+    && wget https://s3.amazonaws.com/rds-downloads/rds-ca-2015-root.pem -P /usr/local/share/ca-certificates/ \
+    && mv /usr/local/share/ca-certificates/rds-ca-2015-root.pem /usr/local/share/ca-certificates/rds-ca-2015-root.crt \
+    && update-ca-certificates
 
-RUN pip install -r /requirements/production.txt \
+# Requirements have to be pulled and installed here, otherwise caching won't work
+COPY ./Pipfile* /
+
+RUN pip install pipenv && \
+    pipenv install --system \
     && groupadd -r django \
     && useradd -r -g django django
 
